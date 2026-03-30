@@ -8,6 +8,7 @@ using Random
 using Statistics
 
 abstract type AbstractLayer end
+abstract type AbstractLoss end
 
 
 mutable struct Param{T<:AbstractArray}
