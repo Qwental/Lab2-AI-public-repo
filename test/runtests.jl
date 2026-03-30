@@ -4,6 +4,7 @@
 # ==========================================
 
 using Test
+using LinearAlgebra
 # Подключаем наш написанный локальный модуль
 include("../src/CustomNN.jl")
 using .CustomNN
@@ -72,24 +73,22 @@ end
     end
 
     @testset "Integration: Model Training" begin
-        # Задача: выучить y = 2x + 1
-        model = Sequential(Dense(1, 1))
-        opt = Adam(lr=0.1)
-        loss = MSELoss()
-        
-        # Генерируем данные
-        X = randn(1, 10)
-        Y = 2.0 .* X .+ 1.0
-        train_data = [(X, Y) for _ in 1:100]
-        
-        # Обучаем
-        results = fit!(model, train_data, 10, opt, loss, verbose=false)
-        
-        @test results.train_loss[end] < results.train_loss[1]
-        
-        # Проверка весов
-        # model.layers[1] это наш Dense
-        @test model.layers[1].W.data[1] ≈ 2.0 atol=0.2
-        @test model.layers[1].b.data[1] ≈ 1.0 atol=0.2
-    end
+            model = Sequential(Dense(1, 1))
+            opt = Adam(lr=0.1)
+            loss_fn = MSELoss()
+            
+            X = randn(1, 10)
+            Y = 2.0 .* X .+ 1.0
+            train_data = [(X, Y) for _ in 1:100]
+            
+            # Передаем loss_fn
+            results = fit!(model, train_data, 10, opt, loss_fn, verbose=false)
+            
+            @test results.train_loss[end] < results.train_loss[1]
+            
+            # Проверка весов
+            d_layer = model.layers[1]
+            @test d_layer.W.data[1] ≈ 2.0 atol=0.2
+            @test d_layer.b.data[1] ≈ 1.0 atol=0.2
+        end
 end

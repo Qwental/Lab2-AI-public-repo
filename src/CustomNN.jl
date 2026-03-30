@@ -14,15 +14,20 @@ include("core_types.jl")
 include("activations.jl")
 include("losses.jl")
 include("grad_check.jl")
+include("optimizers.jl")
+include("trainer.jl")
 
 # Экспортируем общий контракт (типы и интерфейсные функции)
 export AbstractLayer, Param, params, forward, backward
+export Dense, Sequential
 export AbstractLoss, loss, loss_grad
+export AbstractOptimizer, SGD, Adam, step!, zero_grad!, clip_gradients!
+export fit!
 
-# Экспортируем твои активации
+# Экспортируем активации
 export ReLU, Sigmoid, Tanh, Softmax
 
-# Экспортируем твои функции потерь
+# Экспортируем функции потерь
 export MSELoss, CrossEntropyLoss
 
 # Экспортируем инструмент проверки
