@@ -1,0 +1,54 @@
+name: CI Tests
+
+on:
+    pull_request:
+        branches: [main]
+    push:
+        branches: [main]
+        paths:
+            - "src/**"
+            - "test/**"
+            - "examples/**"
+            - ".github/workflows/tests.yml"
+
+jobs:
+    test:
+        name: Julia ${{ matrix.julia-version }}
+        runs-on: ubuntu-latest
+
+        strategy:
+            fail-fast: false
+            matrix:
+                julia-version: ["1.10", "1.11"]
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: julia-actions/setup-julia@v2
+              with:
+                  version: ${{ matrix.julia-version }}
+
+            - uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.julia/packages
+                      ~/.julia/compiled
+                  key: ${{ runner.os }}-julia-${{ matrix.julia-version }}-${{ hashFiles('**/*.jl') }}
+
+            - name: Install deps
+              run: julia -e 'using Pkg; Pkg.add("Plots"); Pkg.precompile()'
+
+            - name: Test core types
+              run: julia test/tests_for_core_types.jl
+
+            - name: Test main
+              run: julia test/runtests.jl
+
+            - name: Test data utils
+              run: julia test/test_data_utils.jl
+
+            - name: Example XOR
+              run: julia examples/xor_example.jl
+
+            - name: Example Spiral
+              run: julia examples/spiral_example.jl

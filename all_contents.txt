@@ -1,0 +1,966 @@
+===
+FILE: ./test/runtests.jl
+==
+# ==========================================
+# test/runtests.jl
+# Скрипт тестирования модуля
+# ==========================================
+
+using Test
+using LinearAlgebra
+# Подключаем наш написанный локальный модуль
+include("../src/CustomNN.jl")
+using .CustomNN
+
+@testset "Gradient Checking for Activations" begin
+    batch_size = 4
+    features = 5
+    
+    # Тестовые данные (features, batch_size) - строго по ТЗ
+    X_test = randn(Float64, features, batch_size)
+    
+    @test check_gradient(ReLU(), X_test)
+    @test check_gradient(Sigmoid(), X_test)
+    @test check_gradient(Tanh(), X_test)
+    @test check_gradient(Softmax(), X_test)
+end
+
+@testset "Losses Shapes and Types" begin
+    batch_size = 8
+    classes = 3
+    
+    # Симулируем предсказания сети и one-hot метки
+    y_pred = rand(Float64, classes, batch_size)
+    y_true = zeros(Float64, classes, batch_size)
+    for b in 1:batch_size
+        y_true[rand(1:classes), b] = 1.0
+    end
+    
+    # Тестируем MSELoss
+    mse = MSELoss()
+    @test typeof(loss(mse, y_pred, y_true)) == Float64
+    @test size(loss_grad(mse, y_pred, y_true)) == (classes, batch_size)
+    
+    # Тестируем CrossEntropyLoss
+    ce = CrossEntropyLoss()
+    @test typeof(loss(ce, y_pred, y_true)) == Float64
+    @test size(loss_grad(ce, y_pred, y_true)) == (classes, batch_size)
+end
+
+@testset "Neural Network Library Tests" begin
+
+    @testset "Param & Gradients" begin
+        p = Param(randn(2, 2))
+        @test all(p.grad .== 0.0)
+        
+        p.grad .+= 1.0
+        zero_grad!([p])
+        @test all(p.grad .== 0.0)
+        
+        # Тест клиппинга
+        p.grad .= [10.0 0.0; 0.0 0.0] # норма = 10
+        clip_gradients!([p], 1.0)
+        @test norm(p.grad) ≈ 1.0
+    end
+
+    @testset "Dense Layer Forward/Backward" begin
+        layer = Dense(3, 2)
+        x = randn(3, 5) # batch_size = 5
+        
+        out = forward(layer, x)
+        @test size(out) == (2, 5)
+        
+        g_in = backward(layer, ones(2, 5))
+        @test size(g_in) == (3, 5)
+        @test any(layer.W.grad .!= 0.0)
+    end
+
+    @testset "Integration: Model Training" begin
+            model = Sequential(Dense(1, 1))
+            opt = Adam(lr=0.1)
+            loss_fn = MSELoss()
+            
+            X = randn(1, 10)
+            Y = 2.0 .* X .+ 1.0
+            train_data = [(X, Y) for _ in 1:100]
+            
+            # Передаем loss_fn
+            results = fit!(model, train_data, 10, opt, loss_fn, verbose=false)
+            
+            @test results.train_loss[end] < results.train_loss[1]
+            
+            # Проверка весов
+            d_layer = model.layers[1]
+            @test d_layer.W.data[1] ≈ 2.0 atol=0.2
+            @test d_layer.b.data[1] ≈ 1.0 atol=0.2
+        end
+end
+-e 
+
+===
+FILE: ./test/tests_for_core_types.jl
+==
+using Test
+using LinearAlgebra
+using Random
+
+include("../src/core_types.jl")
+# ─────────────────────────────────────────────────────────────────────────────
+# Тесты для Param
+# ─────────────────────────────────────────────────────────────────────────────
+@testset "Param" begin
+    @testset "Конструктор" begin
+        data = randn(3, 4)
+        p = Param(data)
+
+        @test p.data === data                          # тот же объект, не копия
+        @test size(p.grad) == size(data)               # размер совпадает
+        @test eltype(p.grad) == Float64                # тип совпадает
+        @test all(p.grad .== 0.0)                      # инициализирован нулями
+    end
+
+    @testset "zero_grad!" begin
+        p = Param(randn(3, 4))
+        p.grad .= randn(3, 4)                         # засоряем градиент
+        @test !all(p.grad .== 0.0)                     # убеждаемся, что не нули
+
+        zero_grad!(p)
+        @test all(p.grad .== 0.0)                      # после обнуления — нули
+    end
+
+    @testset "Работает с разными типами массивов" begin
+        # Вектор
+        p1 = Param(randn(5))
+        @test size(p1.grad) == (5,)
+
+        # 3D-массив
+        p2 = Param(randn(2, 3, 4))
+        @test size(p2.grad) == (2, 3, 4)
+    end
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Тесты для инициализации весов
+# ─────────────────────────────────────────────────────────────────────────────
+@testset "Инициализация весов" begin
+    Random.seed!(42)
+
+    @testset "glorot_uniform" begin
+        W = glorot_uniform(256, 512)
+
+        @test size(W) == (256, 512)
+        @test eltype(W) == Float64
+
+        limit = sqrt(6.0 / (512 + 256))
+        @test all(-limit .<= W .<= limit)              # все значения в пределах
+
+        # Среднее ≈ 0 (для большой матрицы)
+        @test abs(mean(W)) < 0.01
+    end
+
+    @testset "he_normal" begin
+        W = he_normal(256, 512)
+
+        @test size(W) == (256, 512)
+        @test eltype(W) == Float64
+
+        σ_expected = sqrt(2.0 / 512)
+        # Стандартное отклонение ≈ σ (допуск 10% для 131072 элементов)
+        @test abs(std(W) - σ_expected) / σ_expected < 0.1
+
+        # Среднее ≈ 0
+        @test abs(mean(W)) < 0.01
+    end
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Тесты для Dense
+# ─────────────────────────────────────────────────────────────────────────────
+@testset "Dense" begin
+    Random.seed!(123)
+
+    in_f, out_f, batch = 4, 3, 5
+
+    @testset "Конструктор" begin
+        layer = Dense(in_f, out_f)
+
+        @test size(layer.W.data) == (out_f, in_f)
+        @test size(layer.b.data) == (out_f, 1)
+        @test layer.cache === nothing
+        @test all(layer.b.data .== 0.0)
+    end
+
+    @testset "Конструктор с he_normal" begin
+        layer = Dense(in_f, out_f; init=he_normal)
+        @test size(layer.W.data) == (out_f, in_f)
+    end
+
+    @testset "forward — размеры и значения" begin
+        layer = Dense(in_f, out_f)
+        x = randn(in_f, batch)
+
+        out = forward(layer, x)
+
+        @test size(out) == (out_f, batch)
+        @test layer.cache === x                        # вход закэширован
+
+        # Проверяем результат напрямую
+        expected = layer.W.data * x .+ layer.b.data
+        @test out ≈ expected
+    end
+
+    @testset "backward — размеры градиентов" begin
+        layer = Dense(in_f, out_f)
+        x = randn(in_f, batch)
+
+        forward(layer, x)
+        grad_output = randn(out_f, batch)
+        grad_input = backward(layer, grad_output)
+
+        @test size(grad_input) == (in_f, batch)        # градиент по входу
+        @test size(layer.W.grad) == (out_f, in_f)      # градиент по W
+        @test size(layer.b.grad) == (out_f, 1)          # градиент по b
+    end
+
+    @testset "backward — корректность градиентов (численная проверка)" begin
+        layer = Dense(in_f, out_f)
+        x = randn(in_f, batch)
+
+        # Прямой проход и backward
+        out = forward(layer, x)
+        grad_output = randn(out_f, batch)
+        grad_input = backward(layer, grad_output)
+
+        # ∂L/∂W = grad_output * xᵀ
+        expected_dW = grad_output * x'
+        @test layer.W.grad ≈ expected_dW
+
+        # ∂L/∂b = sum(grad_output, dims=2)
+        expected_db = sum(grad_output; dims=2)
+        @test layer.b.grad ≈ expected_db
+
+        # ∂L/∂x = Wᵀ * grad_output
+        expected_dx = layer.W.data' * grad_output
+        @test grad_input ≈ expected_dx
+    end
+
+    @testset "backward — градиенты накапливаются" begin
+        layer = Dense(in_f, out_f)
+        x = randn(in_f, batch)
+        grad_output = randn(out_f, batch)
+
+        # Первый forward/backward
+        forward(layer, x)
+        backward(layer, grad_output)
+        W_grad_after_1 = copy(layer.W.grad)
+
+        # Второй forward/backward (без zero_grad!)
+        forward(layer, x)
+        backward(layer, grad_output)
+        W_grad_after_2 = layer.W.grad
+
+        # Градиент удвоился
+        @test W_grad_after_2 ≈ 2.0 .* W_grad_after_1
+    end
+
+    @testset "params" begin
+        layer = Dense(in_f, out_f)
+        p = params(layer)
+
+        @test length(p) == 2
+        @test p[1] === layer.W
+        @test p[2] === layer.b
+    end
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Тесты для Sequential
+# ─────────────────────────────────────────────────────────────────────────────
+@testset "Sequential" begin
+    Random.seed!(456)
+
+    in_f, hidden, out_f, batch = 4, 8, 3, 5
+
+    @testset "Конструктор из вектора" begin
+        layers = AbstractLayer[Dense(in_f, hidden), Dense(hidden, out_f)]
+        seq = Sequential(layers)
+        @test length(seq.layers) == 2
+    end
+
+    @testset "Конструктор vararg" begin
+        seq = Sequential(Dense(in_f, hidden), Dense(hidden, out_f))
+        @test length(seq.layers) == 2
+    end
+
+    @testset "forward — последовательное прохождение" begin
+        d1 = Dense(in_f, hidden)
+        d2 = Dense(hidden, out_f)
+        seq = Sequential(d1, d2)
+
+        x = randn(in_f, batch)
+        out = forward(seq, x)
+
+        # Проверяем вручную
+        h = forward(d1, x)
+        expected = d2.W.data * h .+ d2.b.data
+        @test size(out) == (out_f, batch)
+        @test out ≈ expected
+    end
+
+    @testset "backward — градиент проходит через все слои" begin
+        d1 = Dense(in_f, hidden)
+        d2 = Dense(hidden, out_f)
+        seq = Sequential(d1, d2)
+
+        x = randn(in_f, batch)
+        forward(seq, x)
+
+        grad_output = randn(out_f, batch)
+        grad_input = backward(seq, grad_output)
+
+        @test size(grad_input) == (in_f, batch)
+
+        # У обоих слоёв должны быть ненулевые градиенты
+        @test !all(d1.W.grad .== 0.0)
+        @test !all(d2.W.grad .== 0.0)
+    end
+
+    @testset "backward — согласованность с ручным вычислением" begin
+        d1 = Dense(in_f, hidden)
+        d2 = Dense(hidden, out_f)
+
+        # Копируем веса для ручного прохода
+        d1_manual = Dense(in_f, hidden)
+        d1_manual.W.data .= d1.W.data
+        d1_manual.b.data .= d1.b.data
+        d2_manual = Dense(hidden, out_f)
+        d2_manual.W.data .= d2.W.data
+        d2_manual.b.data .= d2.b.data
+
+        x = randn(in_f, batch)
+        grad_output = randn(out_f, batch)
+
+        # Через Sequential
+        seq = Sequential(d1, d2)
+        forward(seq, x)
+        grad_seq = backward(seq, grad_output)
+
+        # Вручную
+        h = forward(d1_manual, x)
+        forward(d2_manual, h)
+        grad_h = backward(d2_manual, grad_output)
+        grad_manual = backward(d1_manual, grad_h)
+
+        @test grad_seq ≈ grad_manual
+        @test d1.W.grad ≈ d1_manual.W.grad
+        @test d2.W.grad ≈ d2_manual.W.grad
+    end
+
+    @testset "params — собирает все параметры" begin
+        d1 = Dense(in_f, hidden)
+        d2 = Dense(hidden, out_f)
+        seq = Sequential(d1, d2)
+
+        p = params(seq)
+
+        @test length(p) == 4                           # W1, b1, W2, b2
+        @test p[1] === d1.W
+        @test p[2] === d1.b
+        @test p[3] === d2.W
+        @test p[4] === d2.b
+    end
+
+    @testset "params — пустой Sequential" begin
+        seq = Sequential(AbstractLayer[])
+        @test params(seq) == Param[]
+    end
+
+    @testset "zero_grad! через params" begin
+        d1 = Dense(in_f, hidden)
+        d2 = Dense(hidden, out_f)
+        seq = Sequential(d1, d2)
+
+        x = randn(in_f, batch)
+        forward(seq, x)
+        backward(seq, randn(out_f, batch))
+
+        # Градиенты ненулевые
+        @test !all(d1.W.grad .== 0.0)
+
+        # Обнуляем все
+        for p in params(seq)
+            zero_grad!(p)
+        end
+
+        @test all(d1.W.grad .== 0.0)
+        @test all(d1.b.grad .== 0.0)
+        @test all(d2.W.grad .== 0.0)
+        @test all(d2.b.grad .== 0.0)
+    end
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Численная проверка градиентов (finite differences)
+# ─────────────────────────────────────────────────────────────────────────────
+@testset "Численная проверка градиентов (finite differences)" begin
+    Random.seed!(789)
+
+    in_f, hidden, out_f, batch = 3, 4, 2, 2
+    d1 = Dense(in_f, hidden)
+    d2 = Dense(hidden, out_f)
+    seq = Sequential(d1, d2)
+
+    x = randn(in_f, batch)
+
+    # Простая скалярная функция потерь: L = sum(output)
+    # Тогда ∂L/∂output = ones(...)
+    function compute_loss(seq, x)
+        return sum(forward(seq, x))
+    end
+
+    # Аналитический градиент
+    forward(seq, x)
+    grad_output = ones(out_f, batch)
+    backward(seq, grad_output)
+
+    ε = 1e-7
+
+    @testset "∂L/∂W для каждого слоя" begin
+        for (name, layer) in [("d1", d1), ("d2", d2)]
+            W = layer.W
+            analytic_grad = copy(W.grad)
+
+            numerical_grad = zeros(size(W.data))
+            for i in eachindex(W.data)
+                orig = W.data[i]
+
+                W.data[i] = orig + ε
+                loss_plus = compute_loss(seq, x)
+
+                W.data[i] = orig - ε
+                loss_minus = compute_loss(seq, x)
+
+                W.data[i] = orig
+                numerical_grad[i] = (loss_plus - loss_minus) / (2ε)
+            end
+
+            @test analytic_grad ≈ numerical_grad atol=1e-5
+        end
+    end
+
+    @testset "∂L/∂b для каждого слоя" begin
+        for (name, layer) in [("d1", d1), ("d2", d2)]
+            b = layer.b
+            analytic_grad = copy(b.grad)
+
+            numerical_grad = zeros(size(b.data))
+            for i in eachindex(b.data)
+                orig = b.data[i]
+
+                b.data[i] = orig + ε
+                loss_plus = compute_loss(seq, x)
+
+                b.data[i] = orig - ε
+                loss_minus = compute_loss(seq, x)
+
+                b.data[i] = orig
+                numerical_grad[i] = (loss_plus - loss_minus) / (2ε)
+            end
+
+            @test analytic_grad ≈ numerical_grad atol=1e-5
+        end
+    end
+end
+
+println("\n✅ Все тесты пройдены!")-e 
+
+
+===
+FILE: ./src/losses.jl
+==
+# ==========================================
+# src/losses.jl
+# Функции потерь
+# ==========================================
+
+# ----------------- MSELoss -----------------
+struct MSELoss <: AbstractLoss end
+
+function loss(::MSELoss, y_pred::Matrix{Float64}, y_true::Matrix{Float64})
+    batch_size = size(y_pred, 2)
+    # Среднеквадратичная ошибка по всему батчу
+    return sum((y_pred .- y_true).^2) / batch_size
+end
+
+function loss_grad(::MSELoss, y_pred::Matrix{Float64}, y_true::Matrix{Float64})
+    batch_size = size(y_pred, 2)
+    return 2.0 .* (y_pred .- y_true) ./ batch_size
+end
+
+# ----------------- CrossEntropyLoss -----------------
+struct CrossEntropyLoss <: AbstractLoss end
+
+function loss(::CrossEntropyLoss, y_pred::Matrix{Float64}, y_true::Matrix{Float64})
+    batch_size = size(y_pred, 2)
+    # eps(Float64) предотвращает взятие логарифма от нуля
+    return -sum(y_true .* log.(y_pred .+ eps(Float64))) / batch_size
+end
+
+function loss_grad(::CrossEntropyLoss, y_pred::Matrix{Float64}, y_true::Matrix{Float64})
+    batch_size = size(y_pred, 2)
+    # eps(Float64) предотвращает деление на ноль
+    return -(y_true ./ (y_pred .+ eps(Float64))) ./ batch_size
+end-e 
+
+===
+FILE: ./src/trainer.jl
+==
+# ==========================================
+# meow UwU
+# src/trainer.jl
+# ==========================================
+
+using Statistics
+using Printf
+
+"""
+fit!(model, train_loader, epochs, optimizer, loss_fn; ...)
+
+Основной цикл обучения
+"""
+function fit!(
+    model::AbstractLayer,
+    train_loader,
+    epochs::Int,
+    optimizer::AbstractOptimizer,
+    loss_fn::AbstractLoss;
+    val_loader = nothing,
+    clip_norm::Union{Float64, Nothing} = nothing,
+    verbose::Bool = true
+)
+    train_loss_hist = Float64[]
+    val_loss_hist = Float64[]
+    all_params = params(model)
+
+    for epoch in 1:epochs
+        batch_losses = Float64[]
+        
+        for (x_batch, y_batch) in train_loader
+            # 1. Сброс градиентов
+            zero_grad!(all_params)
+
+            # 2. Forward pass
+            y_pred = forward(model, x_batch)
+            # Используем функцию loss из вашего файла losses.jl
+            push!(batch_losses, loss(loss_fn, y_pred, y_batch))
+
+            # 3. Backward pass
+            # Используем функцию loss_grad из вашего файла losses.jl
+            g_out = loss_grad(loss_fn, y_pred, y_batch)
+            backward(model, g_out)
+
+            # 4. Градиентный клиппинг (если задан)
+            if !isnothing(clip_norm)
+                clip_gradients!(all_params, Float64(clip_norm))
+            end
+   
+            # 5. Шаг оптимизатора
+            step!(optimizer, all_params)
+        end
+
+        avg_train_loss = mean(batch_losses)
+        push!(train_loss_hist, avg_train_loss)
+
+        # Валидация
+        val_str = ""
+        if !isnothing(val_loader)
+            # Расчет потерь на валидации через интерфейс AbstractLoss
+            v_loss = mean(loss(loss_fn, forward(model, xv), yv) for (xv, yv) in val_loader)
+            push!(val_loss_hist, v_loss)
+            val_str = @sprintf(" | val_loss: %.6f", v_loss)
+        end
+
+        if verbose
+            @printf("Epoch [%d/%d] train_loss: %.6f%s\n", epoch, epochs, avg_train_loss, val_str)
+        end
+    end
+
+    return (train_loss=train_loss_hist, val_loss=val_loss_hist)
+end
+-e 
+
+===
+FILE: ./src/grad_check.jl
+==
+# ==========================================
+# src/grad_check.jl
+# Численная проверка градиентов
+# ==========================================
+
+"""
+    check_gradient(layer::AbstractLayer, x::Matrix{Float64}; eps=1e-5, tol=1e-4)
+
+Вычисляет аналитический градиент через `backward` и сравнивает его
+с численным градиентом (метод конечных разностей). Возвращает true, если совпадают.
+"""
+function check_gradient(layer::AbstractLayer, x::Matrix{Float64}; eps::Float64=1e-5, tol::Float64=1e-4)
+    x_work = copy(x)
+    
+    # 1. Аналитический проход
+    out_analytic = forward(layer, x_work)
+    # Имитируем входящий градиент от следующего слоя
+    grad_output = randn(Float64, size(out_analytic))
+    
+    grad_analytic = backward(layer, grad_output)
+    
+    # 2. Численный проход
+    num_grad = zeros(Float64, size(x_work))
+    
+    for i in eachindex(x_work)
+        orig_val = x_work[i]
+        
+        # Шаг вперед
+        x_work[i] = orig_val + eps
+        out_plus = forward(layer, x_work)
+        loss_plus = sum(out_plus .* grad_output) # Симуляция скалярного loss
+        
+        # Шаг назад
+        x_work[i] = orig_val - eps
+        out_minus = forward(layer, x_work)
+        loss_minus = sum(out_minus .* grad_output)
+        
+        # Центральная производная
+        num_grad[i] = (loss_plus - loss_minus) / (2.0 * eps)
+        
+        # Возврат значения
+        x_work[i] = orig_val
+    end
+    
+    # Сбрасываем кэш слоя в исходное состояние
+    forward(layer, x)
+    
+    # 3. Сравнение (Relative Error)
+    diff = norm(grad_analytic .- num_grad)
+    denom = norm(grad_analytic) + norm(num_grad)
+    
+    rel_error = denom == 0.0 ? 0.0 : diff / denom
+    return rel_error < tol
+end-e 
+
+===
+FILE: ./src/core_types.jl
+==
+# ==========================================
+# src/core_types.jl
+# Базовые типы и интерфейсы (Общий контракт)
+# ==========================================
+
+using LinearAlgebra
+using Random
+using Statistics
+
+abstract type AbstractLayer end
+abstract type AbstractLoss end
+
+
+mutable struct Param{T<:AbstractArray}
+    data::T
+    grad::T
+end
+
+function Param(data::T) where {T<:AbstractArray}
+    return Param{T}(data, zero(data))
+end
+
+function zero_grad!(p::Param)
+    fill!(p.grad, zero(eltype(p.grad)))
+    return nothing
+end
+
+params(::AbstractLayer)::Vector{Param} = Param[]
+
+function glorot_uniform(out_features::Int, in_features::Int)::Matrix{Float64}
+    limit = sqrt(6.0 / (in_features + out_features))
+    return rand(Float64, out_features, in_features) .* (2.0 * limit) .- limit
+end
+
+function he_normal(out_features::Int, in_features::Int)::Matrix{Float64}
+    σ = sqrt(2.0 / in_features)
+    return randn(Float64, out_features, in_features) .* σ
+end
+
+mutable struct Dense <: AbstractLayer
+    W::Param
+    b::Param
+    cache::Union{Nothing, AbstractMatrix}
+end
+
+function Dense(in_features::Int, out_features::Int; init=glorot_uniform)
+    W_data = init(out_features, in_features)
+    b_data = zeros(Float64, out_features, 1)
+    return Dense(Param(W_data), Param(b_data), nothing)
+end
+
+function forward(layer::Dense, x::AbstractMatrix)
+    layer.cache = x
+    return layer.W.data * x .+ layer.b.data
+end
+
+function backward(layer::Dense, grad_output::AbstractMatrix)
+    x = layer.cache::AbstractMatrix
+    mul!(layer.W.grad, grad_output, x', 1.0, 1.0)
+    layer.b.grad .+= sum(grad_output; dims=2)
+    grad_input = layer.W.data' * grad_output
+    return grad_input
+end
+
+function params(layer::Dense)::Vector{Param}
+    return Param[layer.W, layer.b]
+end
+
+struct Sequential <: AbstractLayer
+    layers::Vector{AbstractLayer}
+end
+
+function Sequential(layers::AbstractLayer...)
+    return Sequential(AbstractLayer[l for l in layers])
+end
+
+function forward(seq::Sequential, x)
+    out = x
+    for layer in seq.layers
+        out = forward(layer, out)
+    end
+    return out
+end
+
+function backward(seq::Sequential, grad_output)
+    grad = grad_output
+    for i in length(seq.layers):-1:1
+        grad = backward(seq.layers[i], grad)
+    end
+    return grad
+end
+
+function params(seq::Sequential)::Vector{Param}
+    layer_params = [params(layer) for layer in seq.layers]
+    filter!(!isempty, layer_params)
+    isempty(layer_params) && return Param[]
+    return reduce(vcat, layer_params)
+end
+-e 
+
+===
+FILE: ./src/optimizers.jl
+==
+# ==========================================
+# meow UwU
+# src/optimizers.jl
+# ==========================================
+
+using LinearAlgebra
+
+abstract type AbstractOptimizer end
+
+"""
+zero_grad!(params::Vector{<:Param})
+Обнуляет градиенты для списка параметров.
+"""
+function zero_grad!(params::Vector{<:Param})
+    for p in params
+        fill!(p.grad, zero(eltype(p.grad)))
+    end
+end
+
+"""
+clip_gradients!(params::Vector{<:Param}, max_norm::Float64)
+Клиппинг градиентов по глобальной L2-норме.
+"""
+function clip_gradients!(params::Vector{<:Param}, max_norm::Float64)
+    global_norm = sqrt(sum(sum(abs2, p.grad) for p in params))
+
+    if global_norm > max_norm
+        scale = max_norm / (global_norm + eps(Float64))
+        for p in params
+            p.grad .*= scale
+        end
+    end
+    return global_norm
+end
+
+# --- SGD ---
+mutable struct SGD <: AbstractOptimizer
+    lr::Float64
+end
+
+function step!(opt::SGD, params::Vector{<:Param})
+    for p in params
+        p.data .-= opt.lr .* p.grad
+    end
+end
+
+# --- Adam ---
+mutable struct Adam <: AbstractOptimizer
+    lr::Float64
+    beta1::Float64
+    beta2::Float64
+    epsilon::Float64
+    m::Dict{UInt64, AbstractArray}
+    v::Dict{UInt64, AbstractArray}
+    t::Dict{UInt64, Int}
+end
+
+Adam(; lr=0.001, b1=0.9, b2=0.999, eps=1e-8) = 
+    Adam(lr, b1, b2, eps, Dict(), Dict(), Dict())
+
+function step!(opt::Adam, params::Vector{<:Param})
+    for p in params
+        id = objectid(p)
+        
+        # Ленивая инициализация состояний
+        if !haskey(opt.m, id)
+            opt.m[id] = zero(p.grad)
+            opt.v[id] = zero(p.grad)
+            opt.t[id] = 0
+        end
+
+        opt.t[id] += 1
+        t = opt.t[id]
+        m, v, g = opt.m[id], opt.v[id], p.grad
+
+        # Обновление моментов
+        @. m = opt.beta1 * m + (1.0 - opt.beta1) * g
+        @. v = opt.beta2 * v + (1.0 - opt.beta2) * g^2
+
+        # Корректировка смещения
+        m_hat = m ./ (1.0 - opt.beta1^t)
+        v_hat = v ./ (1.0 - opt.beta2^t)
+
+        # Обновление параметров
+        @. p.data -= opt.lr * m_hat / (sqrt(v_hat) + opt.epsilon)
+    end
+end
+-e 
+
+===
+FILE: ./src/activations.jl
+==
+# ==========================================
+# src/activations.jl
+# Функции активации (Слои)
+# ==========================================
+
+# ----------------- ReLU -----------------
+mutable struct ReLU <: AbstractLayer
+    mask::Matrix{Bool} # Кэш маски для backward
+    ReLU() = new()
+end
+
+function forward(layer::ReLU, x::Matrix{Float64})
+    layer.mask = x .> 0.0
+    return x .* layer.mask
+end
+
+function backward(layer::ReLU, grad_output::Matrix{Float64})
+    return grad_output .* layer.mask
+end
+
+params(layer::ReLU)::Vector{Param} = Param[]
+
+# ----------------- Sigmoid -----------------
+mutable struct Sigmoid <: AbstractLayer
+    out::Matrix{Float64} # Кэш выхода
+    Sigmoid() = new()
+end
+
+function forward(layer::Sigmoid, x::Matrix{Float64})
+    layer.out = 1.0 ./ (1.0 .+ exp.(.-x))
+    return layer.out
+end
+
+function backward(layer::Sigmoid, grad_output::Matrix{Float64})
+    return grad_output .* layer.out .* (1.0 .- layer.out)
+end
+
+params(layer::Sigmoid)::Vector{Param} = Param[]
+
+# ----------------- Tanh -----------------
+mutable struct Tanh <: AbstractLayer
+    out::Matrix{Float64} # Кэш выхода
+    Tanh() = new()
+end
+
+function forward(layer::Tanh, x::Matrix{Float64})
+    layer.out = tanh.(x)
+    return layer.out
+end
+
+function backward(layer::Tanh, grad_output::Matrix{Float64})
+    return grad_output .* (1.0 .- layer.out.^2)
+end
+
+params(layer::Tanh)::Vector{Param} = Param[]
+
+# ----------------- Softmax -----------------
+mutable struct Softmax <: AbstractLayer
+    out::Matrix{Float64} # Кэш выхода
+    Softmax() = new()
+end
+
+function forward(layer::Softmax, x::Matrix{Float64})
+    # Численная стабильность: вычитаем максимум по каждому столбцу (батчу)
+    x_max = maximum(x, dims=1)
+    exp_x = exp.(x .- x_max)
+    layer.out = exp_x ./ sum(exp_x, dims=1)
+    return layer.out
+end
+
+function backward(layer::Softmax, grad_output::Matrix{Float64})
+    # Векторизованный расчет якобиана Softmax: dL/dx = out * (grad_out - sum(out * grad_out))
+    sum_out_grad = sum(layer.out .* grad_output, dims=1)
+    return layer.out .* (grad_output .- sum_out_grad)
+end
+
+params(layer::Softmax)::Vector{Param} = Param[]-e 
+
+===
+FILE: ./src/CustomNN.jl
+==
+# ==========================================
+# src/CustomNN.jl
+# Главный файл библиотеки
+# ==========================================
+
+module CustomNN
+
+using LinearAlgebra
+using Statistics
+using Random
+
+# Подключаем файлы в порядке зависимости
+include("core_types.jl")
+include("activations.jl")
+include("losses.jl")
+include("grad_check.jl")
+include("optimizers.jl")
+include("trainer.jl")
+
+# Экспортируем общий контракт (типы и интерфейсные функции)
+export AbstractLayer, Param, params, forward, backward
+export Dense, Sequential
+export AbstractLoss, loss, loss_grad
+export AbstractOptimizer, SGD, Adam, step!, zero_grad!, clip_gradients!
+export fit!
+
+# Экспортируем активации
+export ReLU, Sigmoid, Tanh, Softmax
+
+# Экспортируем функции потерь
+export MSELoss, CrossEntropyLoss
+
+# Экспортируем инструмент проверки
+export check_gradient
+
+end # module CustomNN
+-e 
+

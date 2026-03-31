@@ -16,6 +16,7 @@ include("losses.jl")
 include("grad_check.jl")
 include("optimizers.jl")
 include("trainer.jl")
+include("data_utils.jl")
 
 # Экспортируем общий контракт (типы и интерфейсные функции)
 export AbstractLayer, Param, params, forward, backward
@@ -32,5 +33,8 @@ export MSELoss, CrossEntropyLoss
 
 # Экспортируем инструмент проверки
 export check_gradient
+
+# Экспортируем утилиты данных
+export onehot, train_test_split, DataLoader
 
 end # module CustomNN
