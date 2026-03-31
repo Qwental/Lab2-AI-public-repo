@@ -6,7 +6,7 @@
 | ФИО       | Роль в проекте                     | Оценка       |
 |-----------|------------------------------------|--------------|
 | Тремель   | Руководил |          |
-| Бугренков | Программировал |       |
+| Бугренков В.П. | Программировал, написал пайплайн, сделал примеры использования фреймворка |       |
 | Королев| Программировал оптимизаторы |      |
 | Тропин   | Писала отчёт |          |
 все из группы М8О-311Б-23
@@ -39,3 +39,48 @@
 * Решение в качестве примера какой-то неочевидной задачи (детектор котиков но фото)
 * Развёртывание фреймворка на мобильной платформе или оригинальном железе
 * и т.д. - дайте волю фантазии
+
+# Картинки
+
+## xor_loss
+![xor_loss](https://drive.google.com/uc?export=view&id=1W9r57NT7SQpG-5iB5OLK0czrIujrvZ5G)
+
+## spiral_loss
+![spiral_loss](https://drive.google.com/uc?export=view&id=1l003s7WIdmQPEVtEhGJx_UjtfShB0LaZ)
+
+## spiral_boundary
+![spiral_boundary](https://drive.google.com/uc?export=view&id=1vkTFtsxLd7j7R7M9E2QjcMDjOoAHyaTe)
+
+## mnist_loss
+![mnist_loss](https://drive.google.com/uc?export=view&id=1W6iMECSbt5tsaflsiVsK7Lm7ApIJG4uj)
+
+## mnist_prediction
+![mnist_prediction](https://drive.google.com/uc?export=view&id=1ZsWKVCUeiFEsIB0Jk1UFkKyX4fkpjVP0)
+
+## fire_loss
+![fire_loss](https://drive.google.com/uc?export=view&id=1Bj1tpGYkijWd8hrJ3RLExqedc_UGnF-2)
+
+## fire_feature_importance
+![fire_feature_importance](https://drive.google.com/uc?export=view&id=1-G3iY9X3crOyXdmmt9Jb-o4WnRzftwyx)
+
+## fire_matrix
+![fire_matrix](https://drive.google.com/uc?export=view&id=1433zi3XzYBgXraE0MAhbQYivLdirLeIv)
+
+
+xor_loss https://drive.google.com/file/d/1W9r57NT7SQpG-5iB5OLK0czrIujrvZ5G/view?usp=drive_link
+
+spiral_loss https://drive.google.com/file/d/1l003s7WIdmQPEVtEhGJx_UjtfShB0LaZ/view?usp=drive_link
+
+spiral_boundary https://drive.google.com/file/d/1vkTFtsxLd7j7R7M9E2QjcMDjOoAHyaTe/view?usp=drive_link
+
+mnist_loss https://drive.google.com/file/d/1W6iMECSbt5tsaflsiVsK7Lm7ApIJG4uj/view?usp=drive_link
+
+
+mnist_prediction https://drive.google.com/file/d/1ZsWKVCUeiFEsIB0Jk1UFkKyX4fkpjVP0/view?usp=drive_link
+
+fire_loss https://drive.google.com/file/d/1Bj1tpGYkijWd8hrJ3RLExqedc_UGnF-2/view?usp=drive_link
+
+fire_feature_importance https://drive.google.com/file/d/1-G3iY9X3crOyXdmmt9Jb-o4WnRzftwyx/view?usp=drive_link
+
+fire_matrix https://drive.google.com/file/d/1433zi3XzYBgXraE0MAhbQYivLdirLeIv/view?usp=drive_link
+
