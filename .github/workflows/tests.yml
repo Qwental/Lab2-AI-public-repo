@@ -52,3 +52,10 @@ jobs:
 
             - name: Example Spiral
               run: julia examples/spiral_example.jl
+
+            - name: Upload plots as artifacts
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: plots-julia-${{ matrix.julia-version }}
+                  path: "*.png"
