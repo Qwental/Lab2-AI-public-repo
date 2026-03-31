@@ -1,11 +1,6 @@
-# ==========================================
-# src/activations.jl
-# Функции активации (Слои)
-# ==========================================
 
-# ----------------- ReLU -----------------
 mutable struct ReLU <: AbstractLayer
-    mask::Matrix{Bool} # Кэш маски для backward
+    mask::Matrix{Bool}
     ReLU() = new()
 end
 
@@ -20,9 +15,9 @@ end
 
 params(layer::ReLU)::Vector{Param} = Param[]
 
-# ----------------- Sigmoid -----------------
+
 mutable struct Sigmoid <: AbstractLayer
-    out::Matrix{Float64} # Кэш выхода
+    out::Matrix{Float64} 
     Sigmoid() = new()
 end
 
@@ -37,7 +32,6 @@ end
 
 params(layer::Sigmoid)::Vector{Param} = Param[]
 
-# ----------------- Tanh -----------------
 mutable struct Tanh <: AbstractLayer
     out::Matrix{Float64} # Кэш выхода
     Tanh() = new()
@@ -54,14 +48,12 @@ end
 
 params(layer::Tanh)::Vector{Param} = Param[]
 
-# ----------------- Softmax -----------------
 mutable struct Softmax <: AbstractLayer
     out::Matrix{Float64} # Кэш выхода
     Softmax() = new()
 end
 
 function forward(layer::Softmax, x::Matrix{Float64})
-    # Численная стабильность: вычитаем максимум по каждому столбцу (батчу)
     x_max = maximum(x, dims=1)
     exp_x = exp.(x .- x_max)
     layer.out = exp_x ./ sum(exp_x, dims=1)
@@ -69,7 +61,6 @@ function forward(layer::Softmax, x::Matrix{Float64})
 end
 
 function backward(layer::Softmax, grad_output::Matrix{Float64})
-    # Векторизованный расчет якобиана Softmax: dL/dx = out * (grad_out - sum(out * grad_out))
     sum_out_grad = sum(layer.out .* grad_output, dims=1)
     return layer.out .* (grad_output .- sum_out_grad)
 end

@@ -18,23 +18,18 @@ include("optimizers.jl")
 include("trainer.jl")
 include("data_utils.jl")
 
-# Экспортируем общий контракт (типы и интерфейсные функции)
 export AbstractLayer, Param, params, forward, backward
 export Dense, Sequential
 export AbstractLoss, loss, loss_grad
 export AbstractOptimizer, SGD, Adam, step!, zero_grad!, clip_gradients!
 export fit!
 
-# Экспортируем активации
 export ReLU, Sigmoid, Tanh, Softmax
 
-# Экспортируем функции потерь
 export MSELoss, CrossEntropyLoss
 
-# Экспортируем инструмент проверки
 export check_gradient
 
-# Экспортируем утилиты данных
 export onehot, train_test_split, DataLoader
 
-end # module CustomNN
+end

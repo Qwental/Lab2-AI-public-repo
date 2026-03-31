@@ -1,13 +1,8 @@
-# ==========================================
-# test/test_data_utils.jl
-# Тесты для data_utils.jl
-# ==========================================
 
 using Test
 using Random
 using LinearAlgebra
 
-# Подключаем модуль ТОЛЬКО если он ещё не загружен
 if !isdefined(Main, :CustomNN)
     include("../src/CustomNN.jl")
 end
@@ -184,4 +179,4 @@ using .CustomNN
     end
 end
 
-println("\n✅ Все тесты Data Utilities пройдены!")
+println("\nВсе тесты Data Utilities пройдены!")

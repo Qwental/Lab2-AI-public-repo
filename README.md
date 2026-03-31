@@ -82,6 +82,16 @@ loss_fn = CrossEntropyLoss()
 #### 1. Классификация рукописных цифр (MNIST)
 Обучение на классическом наборе данных 28x28 пикселей. Достигнута высокая точность распознавания.
 
+- Данные: 60,000 обучающих и 10,000 тестовых изображений.
+
+- Архитектура: 784 -> 256 -> 128 -> 10 -> Softmax.
+
+- Результаты:
+
+   -  Train Accuracy: 99.76%
+
+    - Test Accuracy: 97.78% 
+
 **График функции потерь (Loss):**
 
 ![mnist_loss](https://drive.google.com/uc?export=view&id=1W6iMECSbt5tsaflsiVsK7Lm7ApIJG4uj)
@@ -92,6 +102,24 @@ loss_fn = CrossEntropyLoss()
 
 #### 2. Акустическое тушение пожаров (Fire Dataset)
 Анализ данных об использовании звуковых волн для тушения пламени. Пример работы с табличными данными из Excel и расчет важности признаков.
+
+- Архитектура: 9 -> 64 -> 32 -> 16 -> 2 -> Softmax.
+
+- Метрики на тестовой выборке:
+
+    - Accuracy: 96.73%
+
+    - Precision: 96.44%
+
+    - Recall: 97.20%
+
+    - F1-Score: 96.82%
+
+- Confusion Matrix:
+
+    - True Negatives: 1640, True Positives: 1734
+
+    - False Positives: 64, False Negatives: 50
 
 **Матрица ошибок (Confusion Matrix):**
 
@@ -108,6 +136,12 @@ loss_fn = CrossEntropyLoss()
 #### 3. Нелинейная классификация "Спирали"
 Демонстрация способности сети находить сложные границы решений в 2D пространстве.
 
+Результат (500 эпох):
+
+- Train Accuracy: 98.75%
+- Test Accuracy: 98.75%
+- Граница решений (Decision Boundary): Успешное разделение закрученных данных.
+
 **Граница решений (Decision Boundary):**
 
 ![spiral_boundary](https://drive.google.com/uc?export=view&id=1vkTFtsxLd7j7R7M9E2QjcMDjOoAHyaTe)
@@ -118,6 +152,11 @@ loss_fn = CrossEntropyLoss()
 
 #### 4. Решение задачи XOR
 Базовый тест на нелинейную разделимость.
+- Архитектура: Dense(2→8) → ReLU → Dense(8→4) → ReLU → Dense(4→1) → Sigmoid
+
+- Итоговый Loss (MSE): 0.0002
+
+- Точность: 100% (Все предсказания верны)
 
 ![xor_loss](https://drive.google.com/uc?export=view&id=1W9r57NT7SQpG-5iB5OLK0czrIujrvZ5G)
 

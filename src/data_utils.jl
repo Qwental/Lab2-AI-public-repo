@@ -1,20 +1,6 @@
-# ==========================================
-# src/data_utils.jl
-# Утилиты данных и DataLoader
-# ==========================================
 
 using Random
 
-# ─────────────────────────────────────────────────────────────────────────────
-# One-hot encoding
-# ─────────────────────────────────────────────────────────────────────────────
-
-"""
-    onehot(y::Vector{Int}, num_classes::Int) -> Matrix{Float64}
-
-Преобразует вектор целочисленных меток в one-hot матрицу размера `(num_classes, length(y))`.
-Метки должны быть в диапазоне `1:num_classes`.
-"""
 function onehot(y::Vector{Int}, num_classes::Int)::Matrix{Float64}
     n = length(y)
     result = zeros(Float64, num_classes, n)
@@ -25,18 +11,7 @@ function onehot(y::Vector{Int}, num_classes::Int)::Matrix{Float64}
     return result
 end
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Train/Test Split
-# ─────────────────────────────────────────────────────────────────────────────
 
-"""
-    train_test_split(X::Matrix, y::Matrix; test_size=0.2, shuffle=true, rng=Random.GLOBAL_RNG)
-
-Разбивает данные на обучающую и тестовую выборки.
-Наблюдения идут по КОЛОНКАМ (dim 2), согласно контракту `(features, batch_size)`.
-
-Возвращает кортеж `(X_train, y_train, X_test, y_test)`.
-"""
 function train_test_split(
     X::Matrix, y::Matrix;
     test_size::Float64 = 0.2,
@@ -66,17 +41,7 @@ function train_test_split(
     return (X_train, y_train, X_test, y_test)
 end
 
-# ─────────────────────────────────────────────────────────────────────────────
-# DataLoader
-# ─────────────────────────────────────────────────────────────────────────────
 
-"""
-    DataLoader(X, y, batch_size; shuffle=true)
-
-Итератор по мини-батчам. Каждая итерация возвращает `(x_batch, y_batch)`.
-Если `shuffle=true`, индексы перемешиваются в начале каждой эпохи
-(при первом вызове `iterate` без стейта).
-"""
 struct DataLoader
     X::Matrix{Float64}
     y::Matrix{Float64}
@@ -90,36 +55,22 @@ struct DataLoader
     end
 end
 
-"""
-    Base.length(dl::DataLoader)
 
-Количество батчей в одной эпохе (с округлением вверх).
-"""
 function Base.length(dl::DataLoader)
     n = size(dl.X, 2)
-    return cld(n, dl.batch_size)  # ceil division
+    return cld(n, dl.batch_size) 
 end
 
-"""
-    Base.iterate(dl::DataLoader)
-
-Начало новой эпохи. Перемешивает индексы (если shuffle=true) и возвращает первый батч.
-"""
 function Base.iterate(dl::DataLoader)
     n = size(dl.X, 2)
     indices = collect(1:n)
     if dl.shuffle
         Random.shuffle!(indices)
     end
-    # Состояние: (indices, текущая_позиция)
     return _get_batch(dl, indices, 1)
 end
 
-"""
-    Base.iterate(dl::DataLoader, state)
 
-Возвращает следующий батч или `nothing`, если данные закончились.
-"""
 function Base.iterate(dl::DataLoader, state)
     indices, pos = state
     n = length(indices)
@@ -129,9 +80,7 @@ function Base.iterate(dl::DataLoader, state)
     return _get_batch(dl, indices, pos)
 end
 
-"""
-Внутренняя функция: извлекает батч начиная с позиции `pos`.
-"""
+
 function _get_batch(dl::DataLoader, indices::Vector{Int}, pos::Int)
     n = length(indices)
     if pos > n
