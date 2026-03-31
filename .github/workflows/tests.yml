@@ -1,61 +1,71 @@
 name: CI Tests
 
 on:
-    pull_request:
-        branches: [main]
-    push:
-        branches: [main]
-        paths:
-            - "src/**"
-            - "test/**"
-            - "examples/**"
-            - ".github/workflows/tests.yml"
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "test/**"
+      - "examples/**"
+      - ".github/workflows/tests.yml"
 
 jobs:
-    test:
-        name: Julia ${{ matrix.julia-version }}
-        runs-on: ubuntu-latest
+  test:
+    name: Julia ${{ matrix.julia-version }}
+    runs-on: ubuntu-latest
 
-        strategy:
-            fail-fast: false
-            matrix:
-                julia-version: ["1.10", "1.11"]
+    strategy:
+      fail-fast: false
+      matrix:
+        julia-version: ["1.11"]
 
-        steps:
-            - uses: actions/checkout@v4
+    steps:
+      - uses: actions/checkout@v4
 
-            - uses: julia-actions/setup-julia@v2
-              with:
-                  version: ${{ matrix.julia-version }}
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.julia-version }}
 
-            - uses: actions/cache@v4
-              with:
-                  path: |
-                      ~/.julia/packages
-                      ~/.julia/compiled
-                  key: ${{ runner.os }}-julia-${{ matrix.julia-version }}-${{ hashFiles('**/*.jl') }}
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.julia/packages
+            ~/.julia/compiled
+          key: ${{ runner.os }}-julia-${{ matrix.julia-version }}-deps
+          restore-keys: |
+            ${{ runner.os }}-julia-${{ matrix.julia-version }}-
 
-            - name: Install deps
-              run: julia -e 'using Pkg; Pkg.add("Plots"); Pkg.precompile()'
+      - name: Install dependencies
+        run: |
+          julia -e 'using Pkg; Pkg.add("Plots")'
+          julia -e 'using Pkg; Pkg.add("XLSX")'
 
-            - name: Test core types
-              run: julia test/tests_for_core_types.jl
+      - name: Test core types
+        run: julia test/tests_for_core_types.jl
 
-            - name: Test main
-              run: julia test/runtests.jl
+      - name: Test main
+        run: julia test/runtests.jl
 
-            - name: Test data utils
-              run: julia test/test_data_utils.jl
+      - name: Test data utils
+        run: julia test/test_data_utils.jl
 
-            - name: Example XOR
-              run: julia examples/xor_example.jl
+      - name: Example XOR
+        run: julia examples/xor_example.jl
 
-            - name: Example Spiral
-              run: julia examples/spiral_example.jl
+      - name: Example Spiral
+        run: julia examples/spiral_example.jl
 
-            - name: Upload plots as artifacts
-              if: always()
-              uses: actions/upload-artifact@v4
-              with:
-                  name: plots-julia-${{ matrix.julia-version }}
-                  path: "*.png"
+      - name: Example MNIST
+        run: julia examples/mnist_example.jl
+
+      - name: Example Fire Extinguisher
+        run: julia examples/fire_extinguisher_example.jl
+
+      - name: Upload plots as artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: plots-julia-${{ matrix.julia-version }}
+          path: artifacts/*.png
