@@ -83,34 +83,42 @@ loss_fn = CrossEntropyLoss()
 Обучение на классическом наборе данных 28x28 пикселей. Достигнута высокая точность распознавания.
 
 **График функции потерь (Loss):**
+
 ![mnist_loss](https://drive.google.com/uc?export=view&id=1W6iMECSbt5tsaflsiVsK7Lm7ApIJG4uj)
 
 **Визуализация предсказаний:**
+
 ![mnist_prediction](https://drive.google.com/uc?export=view&id=1ZsWKVCUeiFEsIB0Jk1UFkKyX4fkpjVP0)
 
 #### 2. Акустическое тушение пожаров (Fire Dataset)
 Анализ данных об использовании звуковых волн для тушения пламени. Пример работы с табличными данными из Excel и расчет важности признаков.
 
 **Матрица ошибок (Confusion Matrix):**
+
 ![fire_matrix](https://drive.google.com/uc?export=view&id=1433zi3XzYBgXraE0MAhbQYivLdirLeIv)
 
 **Важность признаков:**
+
 ![fire_feature_importance](https://drive.google.com/uc?export=view&id=1-G3iY9X3crOyXdmmt9Jb-o4WnRzftwyx)
 
 **Прогресс обучения:**
+
 ![fire_loss](https://drive.google.com/uc?export=view&id=1Bj1tpGYkijWd8hrJ3RLExqedc_UGnF-2)
 
 #### 3. Нелинейная классификация "Спирали"
 Демонстрация способности сети находить сложные границы решений в 2D пространстве.
 
 **Граница решений (Decision Boundary):**
+
 ![spiral_boundary](https://drive.google.com/uc?export=view&id=1vkTFtsxLd7j7R7M9E2QjcMDjOoAHyaTe)
 
 **График Loss:**
+
 ![spiral_loss](https://drive.google.com/uc?export=view&id=1l003s7WIdmQPEVtEhGJx_UjtfShB0LaZ)
 
 #### 4. Решение задачи XOR
 Базовый тест на нелинейную разделимость.
+
 ![xor_loss](https://drive.google.com/uc?export=view&id=1W9r57NT7SQpG-5iB5OLK0czrIujrvZ5G)
 
 ---
