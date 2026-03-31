@@ -14,9 +14,9 @@ function read_mnist_images(filepath::String)
         magic = ntoh(read(f, UInt32))
         @assert magic == 2051 "Неверный magic number для изображений: $magic"
 
-        n_images = ntoh(read(f, UInt32))
-        n_rows = ntoh(read(f, UInt32))
-        n_cols = ntoh(read(f, UInt32))
+        n_images = Int(ntoh(read(f, UInt32)))
+        n_rows = Int(ntoh(read(f, UInt32)))
+        n_cols = Int(ntoh(read(f, UInt32)))
 
         println("Изображений: $n_images, размер: $(n_rows)x$(n_cols)")
 
@@ -33,7 +33,7 @@ function read_mnist_labels(filepath::String)
         magic = ntoh(read(f, UInt32))
         @assert magic == 2049 "Неверный magic number для меток: $magic"
 
-        n_labels = ntoh(read(f, UInt32))
+        n_labels = Int(ntoh(read(f, UInt32)))  # ← Int()
         println("Метки: $n_labels")
 
         labels = read(f)
@@ -140,7 +140,7 @@ function plot_predictions(model, X, y_onehot, X_raw, n_samples=16)
     plots_array = []
     for i in 1:n_samples
         img = X_raw[:, :, indices[i]]
-        title_str = "True: $(true_classes[i]), Pred: $(pred_classes[i])"
+        title_str = "T:$(true_classes[i]) P:$(pred_classes[i])"
         title_color = pred_classes[i] == true_classes[i] ? :green : :red
 
         p = heatmap(
