@@ -1,10 +1,12 @@
-# Лабораторная работа 2 по курсу "Искусственный интеллект"
-# Создание своего нейросетевого фреймворка
+# Лабораторная работа 2 по курсу "Искусственный интеллект". Создание своего нейросетевого фреймворка
+
+[![CI Tests and examples](https://github.com/MAILabs-Edu-2026/lab-nn-framework-team/actions/workflows/tests.yml/badge.svg)](https://github.com/MAILabs-Edu-2026/lab-nn-framework-team/actions/workflows/tests.yml)
+[![Artifacts](https://img.shields.io/badge/GitHub%20Actions-Artifacts-blue)](https://github.com/MAILabs-Edu-2026/lab-nn-framework-team/actions/workflows/tests.yml)
 
 ## Это форк приватного репозитория
 
-[![CI Tests](https://github.com/MAILabs-Edu-2026/lab-nn-framework-team/actions/workflows/tests.yml/badge.svg)](https://github.com/MAILabs-Edu-2026/lab-nn-framework-team/actions/workflows/tests.yml)
-[![Artifacts](https://img.shields.io/badge/GitHub%20Actions-Artifacts-blue)](https://github.com/MAILabs-Edu-2026/lab-nn-framework-team/actions/workflows/tests.yml)
+[Ссылка на пяти минутную видеопрезентацию ЛР №2 от нашей команды](https://drive.google.com/drive/folders/1-3MjTcYq6dcOdblIRNcNVMnE37VwPqqc)
+
 ### Студенты: 
 
 | ФИО                  | Роль в проекте                 | Оценка   |
